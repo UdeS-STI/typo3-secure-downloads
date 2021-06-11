@@ -1,0 +1,3 @@
+include:
+    - project: 'STI/SNA/communications-institutionnelles/cms-institutionnel/extensions/pipeline'
+      file: '/.gitlab-ci.yml'

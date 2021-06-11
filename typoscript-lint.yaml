@@ -1,0 +1,49 @@
+###############################################################################
+# Configuration to be able to lint TypoScript files.
+#
+#   To execute the linting:
+#     ./vendor/bin/typoscript-lint
+#
+#   The file should be named "typoscript-lint.yml" to be able to use the
+#   default configuration file name. Else, you should provide your custom name:
+#     ./vendor/bin/typoscript-lint -c tslint.yaml
+#
+# See https://github.com/martin-helmich/typo3-typoscript-lint for more infos
+###############################################################################
+
+# TypoScript files to lint
+filePatterns:
+    - '*.ts'
+    - '*.tsconfig'
+    - '*.typoscript'
+
+# Paths where to find files to lint
+paths:
+    - Configuration
+
+sniffs:
+    # Raise a info if there is dead code inside TypoScript files
+    - class: DeadCode
+
+    # Raise a warning if we override an assignment (eg. ben = 1 && ben = 2 raises a warning)
+    - class: DuplicateAssignment
+
+    # Make sure there is no empty section (eg. ben {} raises a warning)
+    - class: EmptySection
+
+    # The file should be correctly indented with X spaces
+    - class: Indentation
+      parameters:
+          indentConditions: true # Default: false
+          indentPerLevel: 2 # Default: 4
+          useSpaces: true # Default: true
+
+    # Make sure that nesting is consistent (eg, ben { foo = 1} && ben.bar = 2 raises a warning)
+    - class: NestingConsistency
+
+    # Make sure there is a space BEFORE and AFTER an assignment (eg. a = 1)
+    - class: OperatorWhitespace
+
+    # Raise a warning if we repeat X characters and should extract it into a constant
+    - class: RepeatingRValue
+      disabled: true
