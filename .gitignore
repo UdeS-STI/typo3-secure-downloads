@@ -14,3 +14,7 @@
 .TemporaryItems
 .webprj
 .idea
+
+/node_modules/
+/vendor/
+/public/
