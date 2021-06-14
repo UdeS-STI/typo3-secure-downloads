@@ -1,5 +1,5 @@
 {
-    "name": "secure-downloads",
+    "name": "secure_downloads",
     "description": "TYPO3 Extension Secure Downloads",
     "devDependencies": {
         "@prettier/plugin-php": "^0.15.2",
