@@ -13,8 +13,10 @@
 .settings
 .TemporaryItems
 .webprj
-.idea
 
+/.idea/
+/.sass-cache/
 /node_modules/
 /vendor/
 /public/
+auth.json
