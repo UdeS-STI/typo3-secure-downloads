@@ -31,20 +31,15 @@ class FileDeliveryMiddleware implements MiddlewareInterface
      */
     protected $assetPrefix;
 
-    public function __construct()
-    {
-        $extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class);
-
-        $this->assetPrefix = sprintf(
-            '%s%s/%s',
-            $extensionConfiguration->getDocumentRootPath(),
-            $extensionConfiguration->getLinkPrefix(),
-            $extensionConfiguration->getTokenPrefix()
-        );
-    }
-
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        $extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class);
+        $this->assetPrefix = sprintf(
+          '%s%s/%s',
+          $request->getAttributes()['normalizedParams']->getSitePath(),
+          $extensionConfiguration->getLinkPrefix(),
+          $extensionConfiguration->getTokenPrefix()
+        );
         if ($this->isResponsible($request)) {
             // TODO: Remove the $GLOBALS array when dropping TYPO3 9 LTS support
             $frontendUserAuthentication = $request->getAttribute('frontend.user') ?? $GLOBALS['TSFE']->fe_user;
