@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Factory;
+namespace Bitmotion\SecureDownloads\Factory;
 
 /***
  *
@@ -13,73 +13,96 @@ namespace Leuchtfeuer\SecureDownloads\Factory;
  *
  ***/
 
-use Leuchtfeuer\SecureDownloads\Cache\EncodeCache;
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\Token\AbstractToken;
-use Leuchtfeuer\SecureDownloads\Factory\Event\EnrichPayloadEvent;
-use Leuchtfeuer\SecureDownloads\Registry\TokenRegistry;
+use Bitmotion\SecureDownloads\Cache\EncodeCache;
+use Bitmotion\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
+use Bitmotion\SecureDownloads\Utility\HookUtility;
+use Firebase\JWT\JWT;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\UserAspect;
-use TYPO3\CMS\Core\EventDispatcher\EventDispatcher;
-use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 
-class SecureLinkFactory implements SingletonInterface
+class SecureLinkFactory
 {
     const DEFAULT_CACHE_LIFETIME = 86400;
 
-    /**
-     * @var EventDispatcher
-     */
-    private $eventDispatcher;
-
-    /**
-     * @var ExtensionConfiguration
-     */
     private $extensionConfiguration;
 
-    /**
-     * @var AbstractToken
-     */
-    private $token;
+    protected $userId = 0;
 
-    public function __construct(EventDispatcher $eventDispatcher, ExtensionConfiguration $extensionConfiguration)
-    {
-        $this->eventDispatcher = $eventDispatcher;
-        $this->extensionConfiguration = $extensionConfiguration;
-        $this->token = TokenRegistry::getToken();
-        $this->init();
-    }
+    protected $userGroups = [];
 
-    /**
-     * Initialize the token.
-     */
-    protected function init()
+    protected $pageId = 0;
+
+    protected $resourceUri = '';
+
+    protected $linkTimeout = 0;
+
+    public function __construct(string $resourceUri)
     {
-        $this->token->setExp($this->calculateLinkLifetime());
-        $this->token->setPage((int)$GLOBALS['TSFE']->id);
+        $this->extensionConfiguration = new ExtensionConfiguration();
+        $this->setResourceUri($resourceUri);
+        $this->setLinkTimeout($this->calculateLinkLifetime());
 
         try {
             /** @var UserAspect $userAspect */
             $userAspect = GeneralUtility::makeInstance(Context::class)->getAspect('frontend.user');
-            $this->token->setUser($userAspect->get('id'));
-            $this->token->setGroups($userAspect->getGroupIds());
+            $this->setUserId($userAspect->get('id'));
+            $this->setUserGroups($userAspect->getGroupIds());
+            $this->setPageId((int)$GLOBALS['TSFE']->id);
         } catch (\Exception $exception) {
             // Do nothing.
         }
     }
 
-    /**
-     * Adds the configured additional cache time and the cache lifetime of the current site to the actual time.
-     *
-     * @return int The link lifetime
-     */
-    protected function calculateLinkLifetime(): int
+    public function getUserId(): int
     {
-        $cacheTimeout = ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController && !empty($GLOBALS['TSFE']->page)) ? $GLOBALS['TSFE']->get_cache_timeout() : self::DEFAULT_CACHE_LIFETIME;
+        return $this->userId;
+    }
 
-        return $cacheTimeout + $GLOBALS['EXEC_TIME'] + $this->extensionConfiguration->getCacheTimeAdd();
+    public function setUserId(int $userId): void
+    {
+        $this->userId = $userId;
+    }
+
+    public function getUserGroups(): array
+    {
+        return $this->userGroups;
+    }
+
+    public function setUserGroups(array $userGroups): void
+    {
+        $this->userGroups = $userGroups;
+    }
+
+    public function getPageId(): int
+    {
+        return $this->pageId;
+    }
+
+    public function setPageId(int $pageId): void
+    {
+        $this->pageId = $pageId;
+    }
+
+    public function getResourceUri(): string
+    {
+        return $this->resourceUri;
+    }
+
+    public function setResourceUri(string $resourceUri): void
+    {
+        $this->resourceUri = $resourceUri;
+    }
+
+    public function getLinkTimeout(): int
+    {
+        return $this->linkTimeout;
+    }
+
+    public function setLinkTimeout(int $linkTimeout): void
+    {
+        $this->linkTimeout = $linkTimeout;
     }
 
     /**
@@ -87,7 +110,12 @@ class SecureLinkFactory implements SingletonInterface
      */
     public function getUrl(): string
     {
-        $hash = $this->token->getHash();
+        $userId = $this->getUserId();
+        $userGroups = $this->getUserGroups();
+        $pageId = $this->getPageId();
+        $resourceUri = $this->getResourceUri();
+
+        $hash = md5($userId . $userGroups . $resourceUri . $pageId);
 
         // Retrieve URL from JWT cache
         if (EncodeCache::hasCache($hash)) {
@@ -99,7 +127,7 @@ class SecureLinkFactory implements SingletonInterface
             $this->extensionConfiguration->getLinkPrefix(),
             $this->extensionConfiguration->getTokenPrefix(),
             $this->getJsonWebToken(),
-            pathinfo($this->token->getFile(), PATHINFO_BASENAME)
+            pathinfo($resourceUri, PATHINFO_BASENAME)
         );
 
         // Store URL in JWT cache
@@ -108,91 +136,28 @@ class SecureLinkFactory implements SingletonInterface
         return $url;
     }
 
-    /**
-     * @param int $expires The timestamp at which the link becomes invalid
-     *
-     * @return $this
-     */
-    public function withLinkTimeout(int $expires): self
-    {
-        $clonedObject = clone $this;
-        $clonedObject->token->setExp($expires);
-
-        return $clonedObject;
-    }
-
-    /**
-     * @param int $page The page ID for which the link should be generated for
-     *
-     * @return $this
-     */
-    public function withPage(int $page): self
-    {
-        $clonedObject = clone $this;
-        $clonedObject->token->setPage($page);
-
-        return $clonedObject;
-    }
-
-    /**
-     * @param int $user The user for which the link should be valid for
-     *
-     * @return $this
-     */
-    public function withUser(int $user): self
-    {
-        $clonedObject = clone $this;
-        $clonedObject->token->setUser($user);
-
-        return $clonedObject;
-    }
-
-    /**
-     * @param array $groups An array of user groups for whom the link should be valid for
-     *
-     * @return $this
-     */
-    public function withGroups(array $groups): self
-    {
-        $clonedObject = clone $this;
-        $clonedObject->token->setGroups($groups);
-
-        return $clonedObject;
-    }
-
-    /**
-     * @param string $resourceUri The actual path to the file that should be secured
-     *
-     * @return $this
-     */
-    public function withResourceUri(string $resourceUri): self
-    {
-        $clonedObject = clone $this;
-        $clonedObject->token->setFile($resourceUri);
-
-        return $clonedObject;
-    }
-
-    /**
-     * @return string The generated JSON web token
-     */
     protected function getJsonWebToken(): string
     {
-        $payload = $this->token->getPayload();
-        $this->dispatchEnrichPayloadEvent($payload);
+        $payload = [
+            'iat' => time(),
+            'exp' => $this->getLinkTimeout(),
+            'user' => $this->getUserId(),
+            'groups' => $this->getUserGroups(),
+            'file' => $this->getResourceUri(),
+            'page' => $this->getPageId(),
+        ];
 
-        return $this->token->encode($payload);
+        // Execute hook for manipulating payload
+        HookUtility::executeHook('publishing', 'payload', $payload, $this);
+
+        return JWT::encode($payload, $GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey'], 'HS256');
     }
 
-    /**
-     * Dispatches the EnrichPayloadEvent event.
-     *
-     * @param array $payload The payload of the token
-     */
-    protected function dispatchEnrichPayloadEvent(array &$payload): void
+    protected function calculateLinkLifetime(): int
     {
-        $event = new EnrichPayloadEvent($payload, $this->token);
-        $event = $this->eventDispatcher->dispatch($event);
-        $payload = $event->getPayload();
+        // TODO: TSFE should always be available when dropping HTML parsing.
+        $cacheTimeout = ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController && !empty($GLOBALS['TSFE']->page)) ? $GLOBALS['TSFE']->get_cache_timeout() : self::DEFAULT_CACHE_LIFETIME;
+
+        return $cacheTimeout + $GLOBALS['EXEC_TIME'] + $this->extensionConfiguration->getCacheTimeAdd();
     }
 }

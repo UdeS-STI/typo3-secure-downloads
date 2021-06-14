@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Bitmotion\SecureDownloads\Cache;
+namespace Bitmotion\SecureDownloads\Parser;
 
 /***
  *
@@ -14,8 +14,9 @@ namespace Bitmotion\SecureDownloads\Cache;
  ***/
 
 /**
- * Stores decoded JSON web token data.
+ * @deprecated Parsing the generated HTML is deprecated. All public URLs to files should be retrieved by TYPO3 API.
  */
-class DecodeCache extends AbstractCache
+interface HtmlParserDelegateInterface
 {
+    public function publishResourceUri(string $resourceUri): string;
 }

@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Controller;
+namespace Bitmotion\SecureDownloads\Controller;
 
 /***
  *
@@ -13,10 +13,9 @@ namespace Leuchtfeuer\SecureDownloads\Controller;
  *
  ***/
 
-use Leuchtfeuer\SecureDownloads\Domain\Repository\LogRepository;
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\Filter;
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\Statistic;
-use TYPO3\CMS\Backend\Template\Components\Menu\Menu;
+use Bitmotion\SecureDownloads\Domain\Repository\LogRepository;
+use Bitmotion\SecureDownloads\Domain\Transfer\Filter;
+use Bitmotion\SecureDownloads\Domain\Transfer\Statistic;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Backend\View\BackendTemplateView;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -25,12 +24,13 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Extbase\Mvc\Exception\NoSuchArgumentException;
 use TYPO3\CMS\Extbase\Mvc\Exception\StopActionException;
+use TYPO3\CMS\Extbase\Mvc\Exception\UnsupportedRequestTypeException;
 use TYPO3\CMS\Extbase\Mvc\View\ViewInterface;
 use TYPO3\CMS\Extbase\Mvc\Web\Routing\UriBuilder;
+use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
 
 class LogController extends ActionController
 {
-    const FILTER_SESSION_KEY = 'sdl-filter';
     /**
      * @var BackendTemplateView
      */
@@ -43,6 +43,10 @@ class LogController extends ActionController
     public function __construct(LogRepository $logRepository)
     {
         $this->logRepository = $logRepository;
+
+        if (version_compare(TYPO3_version, '10.0.0', '<')) {
+            parent::__construct();
+        }
     }
 
     /**
@@ -57,20 +61,20 @@ class LogController extends ActionController
         }
 
         if ($this->request->hasArgument('reset') && (bool)$this->request->getArgument('reset') === true) {
-            $GLOBALS['BE_USER']->setSessionData(self::FILTER_SESSION_KEY, null);
+            $GLOBALS['BE_USER']->setSessionData('filter', null);
         }
     }
 
     /**
-     * @param Filter|null $filter The filter object
+     * @throws InvalidQueryException
      */
     public function listAction(Filter $filter = null): void
     {
-        $filter = $filter ?? $GLOBALS['BE_USER']->getSessionData(self::FILTER_SESSION_KEY) ?? (new Filter());
+        $filter = $filter ?? $GLOBALS['BE_USER']->getSessionData('filter') ?? (new Filter());
         $logEntries = $this->logRepository->findByFilter($filter);
 
         // Store filter data in session of backend user (used for pagination)
-        $GLOBALS['BE_USER']->setSessionData(self::FILTER_SESSION_KEY, $filter);
+        $GLOBALS['BE_USER']->setSessionData('filter', $filter);
 
         $this->view->assignMultiple([
             'logs' => $logEntries,
@@ -81,9 +85,6 @@ class LogController extends ActionController
         ]);
     }
 
-    /**
-     * @return array Array containing all users that have downloaded files
-     */
     private function getUsers(): array
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_securedownloads_domain_model_log');
@@ -98,9 +99,6 @@ class LogController extends ActionController
             ->fetchAll();
     }
 
-    /**
-     * @return array Array containing all used file types
-     */
     private function getFileTypes(): array
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_securedownloads_domain_model_log');
@@ -115,8 +113,9 @@ class LogController extends ActionController
     }
 
     /**
-     * @param Filter|null $filter The filter object
+     * @throws InvalidQueryException
      * @throws StopActionException
+     * @throws UnsupportedRequestTypeException
      */
     public function showAction(Filter $filter = null): void
     {
@@ -164,44 +163,26 @@ class LogController extends ActionController
         $menu->setIdentifier('secure_downloads');
 
         if ((int)GeneralUtility::_GP('id') !== 0) {
-            $this->addMenuItems($menu);
+            $actions = [
+                ['controller' => 'Log', 'action' => 'show', 'label' => 'Show by Page'],
+                ['controller' => 'Log', 'action' => 'list', 'label' => 'Overview'],
+            ];
+
+            foreach ($actions as $action) {
+                $isActive = $this->request->getControllerName() === $action['controller'] && $this->request->getControllerActionName() === $action['action'];
+                $item = $menu->makeMenuItem()->setTitle($action['label'])->setHref($this->getUriBuilder()->reset()->uriFor(
+                    $action['action'],
+                    [],
+                    $action['controller']
+                ))->setActive($isActive);
+                $menu->addMenuItem($item);
+            }
         }
 
         $this->view->assign('action', $this->request->getControllerActionName());
         $this->view->getModuleTemplate()->getDocHeaderComponent()->getMenuRegistry()->addMenu($menu);
     }
 
-    /**
-     * Adds menu options to the select menu
-     *
-     * @param Menu $menu The Menu object
-     */
-    protected function addMenuItems(Menu &$menu): void
-    {
-        $controllerName = $this->request->getControllerName();
-        $controllerActionName = $this->request->getControllerActionName();
-        $actions = [
-            ['controller' => 'Log', 'action' => 'show', 'label' => 'Show by Page'],
-            ['controller' => 'Log', 'action' => 'list', 'label' => 'Overview'],
-        ];
-
-        foreach ($actions as $action) {
-            $isActive = $controllerName === $action['controller'] && $controllerActionName === $action['action'];
-
-            $href = $this->getUriBuilder()->reset()->uriFor(
-                $action['action'],
-                [],
-                $action['controller']
-            );
-
-            $item = $menu->makeMenuItem()->setTitle($action['label'])->setHref($href)->setActive($isActive);
-            $menu->addMenuItem($item);
-        }
-    }
-
-    /**
-     * @return UriBuilder The URI builder
-     */
     protected function getUriBuilder(): UriBuilder
     {
         $uriBuilder = $this->objectManager->get(UriBuilder::class);

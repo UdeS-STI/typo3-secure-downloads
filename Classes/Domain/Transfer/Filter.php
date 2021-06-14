@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Domain\Transfer;
+namespace Bitmotion\SecureDownloads\Domain\Transfer;
 
 /***
  *

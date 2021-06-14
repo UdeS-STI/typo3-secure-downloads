@@ -4,52 +4,37 @@ defined('TYPO3_MODE') || die('Access denied.');
 call_user_func(
     function ($extensionKey) {
         // Load libraries when TYPO3 is not in composer mode
-        if (\TYPO3\CMS\Core\Core\Environment::isComposerMode() === false) {
+        if (!defined('TYPO3_COMPOSER_MODE') || !TYPO3_COMPOSER_MODE) {
             require \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath($extensionKey) . 'Libraries/vendor/autoload.php';
         }
 
-        // Load extension configuration and add link prefix to additionalAbsRefPrefixDirectories
-        $GLOBALS['TYPO3_CONF_VARS']['FE']['additionalAbsRefPrefixDirectories'] .= sprintf(
-            ',%s',
-            (new \Leuchtfeuer\SecureDownloads\Domain\Transfer\ExtensionConfiguration())->getLinkPrefix()
-        );
+        // Load extension configuration
+        $configuration = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\Bitmotion\SecureDownloads\Domain\Transfer\ExtensionConfiguration::class);
 
-        ##################
-        #   FAL DRIVER   #
-        ##################
-        $driverRegistry = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Core\Resource\Driver\DriverRegistry::class);
-        $driverRegistry->registerDriverClass(
-            \Leuchtfeuer\SecureDownloads\Resource\Driver\SecureDownloadsDriver::class,
-            \Leuchtfeuer\SecureDownloads\Resource\Driver\SecureDownloadsDriver::DRIVER_SHORT_NAME,
-            \Leuchtfeuer\SecureDownloads\Resource\Driver\SecureDownloadsDriver::DRIVER_NAME,
-            'FILE:EXT:secure_downloads/Configuration/Resource/Driver/SecureDownloadsDriverFlexForm.xml'
-        );
+        // Register eID script
+        // TODO: This part is deprecated and will be removed with version 5
+        $GLOBALS['TYPO3_CONF_VARS']['FE']['eID_include']['tx_securedownloads'] = 'EXT:secure_downloads/Resources/Private/Scripts/FileDeliveryEidDispatcher.php';
 
-        // Register default token
-        \Leuchtfeuer\SecureDownloads\Registry\TokenRegistry::register(
-            'tx_securedownloads_default',
-            \Leuchtfeuer\SecureDownloads\Domain\Transfer\Token\DefaultToken::class,
-            0,
-            false
-        );
+        // Register hooks
+        // TODO: This part is deprecated and will be removed with version 5
+        if (!empty($configuration->getDomain())) {
+            $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['tslib/class.tslib_fe.php']['contentPostProc-output'][] = \Bitmotion\SecureDownloads\Service\SecureDownloadService::class . '->parseFE';
+        }
 
-        // Register default checks
-        \Leuchtfeuer\SecureDownloads\Registry\CheckRegistry::register(
-            'tx_securedownloads_group',
-            \Leuchtfeuer\SecureDownloads\Security\UserGroupCheck::class,
-            10,
-            true
-        );
+        // Connect to signal slots
+        // TODO: Remove this when dropping TYPO3 9 LTS support.
+        if (version_compare(TYPO3_version, '10.0.0', '<')) {
+            $signalSlotDispatcher = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\SignalSlot\Dispatcher::class);
+            $signalSlotDispatcher->connect(
+                \TYPO3\CMS\Core\Resource\ResourceStorage::class,
+                \TYPO3\CMS\Core\Resource\ResourceStorage::SIGNAL_PreGeneratePublicUrl,
+                \Bitmotion\SecureDownloads\Signal::class,
+                'getPublicUrl'
+            );
+        }
 
-        \Leuchtfeuer\SecureDownloads\Registry\CheckRegistry::register(
-            'tx_securedownloads_user',
-            \Leuchtfeuer\SecureDownloads\Security\UserCheck::class,
-            20,
-            true
-        );
-
-        // Add MimeTypes
-        $GLOBALS['TYPO3_CONF_VARS']['SYS']['FileInfo']['fileExtensionToMimeType'] += \Leuchtfeuer\SecureDownloads\MimeTypes::ADDITIONAL_MIME_TYPES;
+        // Add link prefix to additionalAbsRefPrefixDirectories
+        $GLOBALS['TYPO3_CONF_VARS']['FE']['additionalAbsRefPrefixDirectories'] .= sprintf(',%s', $configuration->getLinkPrefix());
 
     }, 'secure_downloads'
 );

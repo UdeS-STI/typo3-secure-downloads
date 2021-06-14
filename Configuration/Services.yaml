@@ -1,13 +1,5 @@
 services:
-  _defaults:
-    autowire: true
-    autoconfigure: true
-    public: false
-
-  Leuchtfeuer\SecureDownloads\:
-    resource: '../Classes/*'
-
-  Leuchtfeuer\SecureDownloads\EventListener\SecureDownloadsEventListener:
+  Bitmotion\SecureDownloads\EventListener\SecureDownloadsEventListener:
     tags:
       - name: event.listener
         identifier: sdl.generatePublicUrlForResource

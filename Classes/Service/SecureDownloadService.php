@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Service;
+namespace Bitmotion\SecureDownloads\Service;
 
 /***
  *
@@ -13,27 +13,97 @@ namespace Leuchtfeuer\SecureDownloads\Service;
  *
  ***/
 
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
-use Leuchtfeuer\SecureDownloads\Factory\SecureLinkFactory;
+use Bitmotion\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
+use Bitmotion\SecureDownloads\Factory\SecureLinkFactory;
+use Bitmotion\SecureDownloads\Parser\HtmlParser;
+use Bitmotion\SecureDownloads\Parser\HtmlParserDelegateInterface;
+use Bitmotion\SecureDownloads\Utility\HookUtility;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 
-class SecureDownloadService implements SingletonInterface
+class SecureDownloadService implements HtmlParserDelegateInterface, SingletonInterface
 {
+    protected $htmlParser;
+
     protected $extensionConfiguration;
 
-    public function __construct(ExtensionConfiguration $extensionConfiguration)
+    protected $securedFileTypesPattern;
+
+    protected $securedDirectoriesPattern;
+
+    public function __construct()
     {
-        $this->extensionConfiguration = $extensionConfiguration;
+        $this->extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class);
+        $this->securedFileTypesPattern = sprintf('/^(%s)$/i', $this->extensionConfiguration->getSecuredFileTypes());
+        $this->securedDirectoriesPattern = sprintf('/^(%s)/i', str_replace('/', '\/', $this->extensionConfiguration->getSecuredDirs()));
+    }
+
+    /**
+     * This method is called by the frontend rendering hook contentPostProc->output
+     *
+     * @deprecated Parsing the generated HTML is deprecated. All public URLs to files should be retrieved by TYPO3 API.
+     */
+    public function parseFE(array &$parameters, TypoScriptFrontendController $typoScriptFrontendController)
+    {
+        $typoScriptFrontendController->content = $this->getHtmlParser()->parse($typoScriptFrontendController->content);
+    }
+
+    /**
+     * Lazily instantiates the HTML parser
+     * Must be called AFTER the configuration manager has been initialized
+     *
+     * @deprecated Parsing the generated HTML is deprecated. All public URLs to files should be retrieved by TYPO3 API.
+     */
+    public function getHtmlParser(): HtmlParser
+    {
+        if (is_null($this->htmlParser)) {
+            $extensionConfiguration = new ExtensionConfiguration();
+
+            $this->htmlParser = new HtmlParser($this, [
+                'domainPattern' => $extensionConfiguration->getDomain(),
+                'folderPattern' => $extensionConfiguration->getSecuredDirs(),
+                'fileExtensionPattern' => $extensionConfiguration->getSecuredFileTypes(),
+                'logLevel' => $extensionConfiguration->getDebug(),
+            ]);
+        }
+
+        return $this->htmlParser;
+    }
+
+    /**
+     * @deprecated Will be removed with version 5. Use $this->publishResourceUri instead.
+     */
+    public function makeSecure(string $originalUri): string
+    {
+        trigger_error('Method makeSecure() will be removed in version 5. Use publishResourceUri() instead.', E_USER_DEPRECATED);
+
+        return $this->publishResourceUri($originalUri);
+    }
+
+    /**
+     * Transforms a relative file URL to a secure download protected URL
+     *
+     * @deprecated Will be removed in version 5.
+     */
+    public function publishResourceUri(string $originalUri): string
+    {
+        $secureLinkFactory = GeneralUtility::makeInstance(SecureLinkFactory::class, rawurldecode($originalUri));
+        $transformedUri = $secureLinkFactory->getUrl();
+
+        // Hook for makeSecure:
+        // TODO: This hook is deprecated and will be removed in version 5.
+        if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['ext/secure_downloads/Classes/Service/SecureDownloadService.php']['makeSecure'])) {
+            trigger_error('Hook name ext/secure_downloads/Classes/Service/SecureDownloadService.php is deprecated. Use bitmotion.secure_downloads.downloadService instead.', E_USER_DEPRECATED);
+            $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['bitmotion']['secure_downloads']['downloadService']['makeSecure'] = $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['ext/secure_downloads/Classes/Service/SecureDownloadService.php']['makeSecure'];
+        }
+        HookUtility::executeHook('downloadService', 'makeSecure', $transformedUri, $this);
+
+        return $transformedUri;
     }
 
     /**
      * Check whether file is located underneath a secured folder and file extension should matches file types pattern.
-     *
-     * @param string $publicUrl The public (non-secured) URL to the file
-     *
-     * @return bool True, if the path of the file matches the configured configuration or the file is stored in a Secure Downloads
-     *              file storage.
      */
     public function pathShouldBeSecured(string $publicUrl): bool
     {
@@ -43,37 +113,23 @@ class SecureDownloadService implements SingletonInterface
             }
 
             $fileExtension = pathinfo($publicUrl, PATHINFO_EXTENSION);
-
-            return (bool)preg_match($this->extensionConfiguration->getSecuredFileTypesPattern(), $fileExtension);
+            if (preg_match($this->securedFileTypesPattern, $fileExtension)) {
+                return true;
+            }
         }
 
         return false;
     }
 
-    /**
-     * Checks whether secured folder matches secured directories pattern.
-     *
-     * @param string $publicUrl The public (non-secured) URL to the file
-     *
-     * @return bool True, if the path of the folder matches the configured configuration or the folder is part of a Secure
-     *              Downloads file storage.
-     */
     public function folderShouldBeSecured(string $publicUrl): bool
     {
-        return (bool)preg_match($this->extensionConfiguration->getSecuredDirectoriesPattern(), $publicUrl);
+        return (bool)preg_match($this->securedDirectoriesPattern, $publicUrl);
     }
 
-    /**
-     * Helper method for transforming a public URL into a secured URL.
-     *
-     * @param string $publicUrl The public (non-secured) URL to the file
-     *
-     * @return string The secured URL
-     */
     public function getResourceUrl(string $publicUrl): string
     {
-        $secureLinkFactory = GeneralUtility::makeInstance(SecureLinkFactory::class);
+        $secureLinkFactory = GeneralUtility::makeInstance(SecureLinkFactory::class, rawurldecode($publicUrl));
 
-        return $secureLinkFactory->withResourceUri(rawurldecode($publicUrl))->getUrl();
+        return $secureLinkFactory->getUrl();
     }
 }

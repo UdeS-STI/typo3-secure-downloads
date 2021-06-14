@@ -1,46 +1,62 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Resource\Event;
+namespace Bitmotion\SecureDownloads\Resource\Event;
 
-/***
- *
- * This file is part of the "Secure Downloads" Extension for TYPO3 CMS.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- *
- *  (c) 2020 Florian Wessels <f.wessels@Leuchtfeuer.com>, Leuchtfeuer Digital Marketing
- *
- ***/
-
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\Token\AbstractToken;
-
-/**
- * This event is executed after the JSON Web Token has been decoded and before the access checks take place.
- */
 final class OutputInitializationEvent
 {
-    /**
-     * @var AbstractToken
-     */
-    private $token;
+    private $userId;
 
-    /**
-     * @param AbstractToken $token This property contains the decoded token object. You can manipulate the properties. The edited
-     *                             token is then used in the further process.
-     */
-    public function __construct(AbstractToken $token)
+    private $userGroups;
+
+    private $file;
+
+    private $expiryTime;
+
+    public function __construct(int $userId, string $userGroups, string $file, int $expiryTime)
     {
-        $this->token = $token;
+        $this->userId = $userId;
+        $this->userGroups = $userGroups;
+        $this->file = $file;
+        $this->expiryTime = $expiryTime;
     }
 
-    public function getToken(): AbstractToken
+    public function getUserId(): int
     {
-        return $this->token;
+        return $this->userId;
     }
 
-    public function setToken(AbstractToken $token): void
+    public function setUserId(int $userId): void
     {
-        $this->token = $token;
+        $this->userId = $userId;
+    }
+
+    public function getUserGroups(): string
+    {
+        return $this->userGroups;
+    }
+
+    public function setUserGroups(string $userGroups): void
+    {
+        $this->userGroups = $userGroups;
+    }
+
+    public function getFile(): string
+    {
+        return $this->file;
+    }
+
+    public function setFile(string $file): void
+    {
+        $this->file = $file;
+    }
+
+    public function getExpiryTime(): int
+    {
+        return $this->expiryTime;
+    }
+
+    public function setExpiryTime(int $expiryTime): void
+    {
+        $this->expiryTime = $expiryTime;
     }
 }

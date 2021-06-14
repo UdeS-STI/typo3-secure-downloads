@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Domain\Transfer;
+namespace Bitmotion\SecureDownloads\Domain\Transfer;
 
 /***
  *
@@ -13,7 +13,7 @@ namespace Leuchtfeuer\SecureDownloads\Domain\Transfer;
  *
  ***/
 
-use Leuchtfeuer\SecureDownloads\Domain\Model\Log;
+use Bitmotion\SecureDownloads\Domain\Model\Log;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 class Statistic

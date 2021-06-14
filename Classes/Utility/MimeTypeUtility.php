@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads;
+namespace Bitmotion\SecureDownloads\Utility;
 
 /***
  *
@@ -13,11 +13,13 @@ namespace Leuchtfeuer\SecureDownloads;
  *
  ***/
 
-final class MimeTypes
-{
-    public const DEFAULT_MIME_TYPE = 'application/octet-stream';
+use Bitmotion\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
+use TYPO3\CMS\Core\Type\File\FileInfo;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-    public const ADDITIONAL_MIME_TYPES = [
+class MimeTypeUtility
+{
+    protected static $mimeTypes = [
         // MS-Office filetypes
         'pps' => 'application/vnd.ms-powerpoint',
         'doc' => 'application/msword',
@@ -95,4 +97,51 @@ final class MimeTypes
         'ps' => 'application/postscript',
         'rtf' => 'application/rtf',
     ];
+
+    /**
+     * Gets the mime type of a file.
+     *
+     * @param string $file Path to the file.
+     *
+     * @return string The mime type.
+     */
+    public static function getMimeType(string $file): ?string
+    {
+        $mimeTypes = self::$mimeTypes;
+
+        $extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class);
+        // Read all additional MIME types from the EM configuration into the array $strAdditionalMimeTypesArray
+        if ($extensionConfiguration->getAdditionalMimeTypes()) {
+            trigger_error('Setting additional mime types in configuration is deprecated. Use "mimeTypeGuessers" hook instead. This will be removed in version 5.', E_USER_DEPRECATED);
+            $additionalFileExtension = '';
+            $additionalMimeType = '';
+            $additionalMimeTypeParts = GeneralUtility::trimExplode(',', $extensionConfiguration->getAdditionalMimeTypes(), true);
+
+            foreach ($additionalMimeTypeParts ?? [] as $additionalMimeTypeItem) {
+                list($additionalFileExtension, $additionalMimeType) = GeneralUtility::trimExplode('|', $additionalMimeTypeItem);
+                if (!empty($additionalFileExtension) && !empty($additionalMimeType)) {
+                    $additionalFileExtension = mb_strtolower($additionalFileExtension);
+                    $mimeTypes[$additionalFileExtension] = $additionalMimeType;
+                }
+            }
+
+            unset($additionalFileExtension, $additionalMimeType);
+        }
+
+        self::addMimeTypesToGlobalsArray($mimeTypes);
+
+        $mimeType = (new FileInfo($file))->getMimeType();
+
+        return $mimeType ? $mimeType : null;
+    }
+
+    /**
+     * Add configured mime types to global TYPO3 mime types, so that the FileInfo class can handle them.
+     *
+     * @param array $mimeTypes The mime types to add.
+     */
+    protected static function addMimeTypesToGlobalsArray(array $mimeTypes): void
+    {
+        $GLOBALS['TYPO3_CONF_VARS']['SYS']['FileInfo']['fileExtensionToMimeType'] += $mimeTypes;
+    }
 }

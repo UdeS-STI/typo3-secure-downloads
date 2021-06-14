@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Domain\Repository;
+namespace Bitmotion\SecureDownloads\Domain\Repository;
 
 /***
  *
@@ -13,13 +13,9 @@ namespace Leuchtfeuer\SecureDownloads\Domain\Repository;
  *
  ***/
 
-use Leuchtfeuer\SecureDownloads\Domain\Model\Log;
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\Filter;
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\Token\AbstractToken;
-use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Resource\ResourceFactory;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
+use Bitmotion\SecureDownloads\Domain\Transfer\Filter;
 use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
+use TYPO3\CMS\Extbase\Persistence\Generic\Typo3QuerySettings;
 use TYPO3\CMS\Extbase\Persistence\QueryInterface;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 use TYPO3\CMS\Extbase\Persistence\Repository;
@@ -30,29 +26,15 @@ class LogRepository extends Repository
         'tstamp' => QueryInterface::ORDER_DESCENDING,
     ];
 
-    /**
-     * Initializes the query and applies default options.
-     *
-     * @return QueryInterface The generated query object.
-     */
-    public function createQuery(): QueryInterface
+    public function initializeObject()
     {
-        $query = parent::createQuery();
-        $querySettings = $query->getQuerySettings();
+        /** @var Typo3QuerySettings $querySettings */
+        $querySettings = $this->objectManager->get(Typo3QuerySettings::class);
         $querySettings->setRespectStoragePage(false);
         $querySettings->setRespectSysLanguage(false);
-        $query->setQuerySettings($querySettings);
-
-        return $query;
+        $this->setDefaultQuerySettings($querySettings);
     }
 
-    /**
-     * Finds log data and applies filter.
-     *
-     * @param Filter|null $filter The filter object.
-     *
-     * @return QueryResultInterface The query result.
-     */
     public function findByFilter(?Filter $filter): QueryResultInterface
     {
         $query = $this->createQuery();
@@ -69,10 +51,6 @@ class LogRepository extends Repository
     }
 
     /**
-     * Applies the filter to a query object.
-     *
-     * @param QueryInterface $query  The query object
-     * @param Filter         $filter The filter object
      * @throws InvalidQueryException
      */
     protected function applyFilter(QueryInterface &$query, Filter $filter): void
@@ -80,46 +58,11 @@ class LogRepository extends Repository
         $constraints = [];
 
         // FileType
-        $this->applyFileTypePropertyToFilter($filter->getFileType(), $query, $constraints);
+        if ($filter->getFileType() !== '' && $filter->getFileType() !== '0') {
+            $constraints[] = $query->equals('mediaType', $filter->getFileType());
+        }
 
         // User Type
-        $this->applyUserTypePropertyToFilter($filter, $query, $constraints);
-
-        // Period
-        $this->applyPeriodPropertyToFilter($filter, $query, $constraints);
-
-        // User and Page
-        $this->applyEqualPropertyToFilter((int)$filter->getFeUserId(), 'user', $query, $constraints);
-        $this->applyEqualPropertyToFilter((int)$filter->getPageId(), 'page', $query, $constraints);
-
-        if (count($constraints) > 0) {
-            $query->matching($query->logicalAnd($constraints));
-        }
-    }
-
-    /**
-     * Applies the file type property of the filter to the query object.
-     *
-     * @param mixed          $fileType    Identifier of the file type
-     * @param QueryInterface $query       The query object
-     * @param array          $constraints Array containing all previously applied constraints
-     */
-    protected function applyFileTypePropertyToFilter($fileType, QueryInterface $query, array &$constraints): void
-    {
-        if ($fileType !== '' && $fileType !== '0') {
-            $constraints[] = $query->equals('mediaType', $fileType);
-        }
-    }
-
-    /**
-     * Applies the user type property of the filter to the query object.
-     *
-     * @param Filter         $filter      The filter object
-     * @param QueryInterface $query       The query object
-     * @param array          $constraints Array containing all previously applied constraints
-     */
-    protected function applyUserTypePropertyToFilter(Filter $filter, QueryInterface $query, array &$constraints): void
-    {
         if ($filter->getUserType() != 0) {
             $userQuery = $query->equals('user', null);
 
@@ -130,70 +73,28 @@ class LogRepository extends Repository
                 $constraints[] = $userQuery;
             }
         }
-    }
 
-    /**
-     * Applies the period properties of the filter to the query object.
-     *
-     * @param Filter         $filter      The filter object
-     * @param QueryInterface $query       The query object
-     * @param array          $constraints Array containing all previously applied constraints
-     * @throws InvalidQueryException
-     */
-    protected function applyPeriodPropertyToFilter(Filter $filter, QueryInterface $query, array &$constraints): void
-    {
-        if ((int)$filter->getFrom() !== 0) {
+        // User
+        if ($filter->getFeUserId() !== 0) {
+            $constraints[] = $query->equals('user', $filter->getFeUserId());
+        }
+
+        // Timeframe
+        if ($filter->getFrom() !== '' && $filter->getFrom() !== null) {
             $constraints[] = $query->greaterThanOrEqual('tstamp', $filter->getFrom());
         }
 
-        if ((int)$filter->getTill() !== 0) {
+        if ($filter->getTill() !== '' && $filter->getTill() !== null) {
             $constraints[] = $query->lessThanOrEqual('tstamp', $filter->getTill());
         }
-    }
 
-    /**
-     * Applies given property of the filter to the query object.
-     *
-     * @param int            $property     The value of the property
-     * @param string         $propertyName The property name
-     * @param QueryInterface $query        The query object
-     * @param array          $constraints  Array containing all previously applied constraints
-     */
-    protected function applyEqualPropertyToFilter(int $property, string $propertyName, QueryInterface $query, array $constraints): void
-    {
-        if ($property !== 0) {
-            $constraints[] = $query->equals($propertyName, $property);
-        }
-    }
-
-    /**
-     * Creates a log entry in the database.
-     *
-     * @param AbstractToken $token    The token containing information that should be logged
-     * @param int           $fileSize The file size of the file that should be logged
-     * @param string        $mimeType The mime type of the file that should be logged
-     * @param int           $user     The ID of the user that downloaded the file
-     */
-    public function logDownload(AbstractToken $token, int $fileSize, string $mimeType, int $user): void
-    {
-        $pathInfo = pathinfo($token->getFile());
-
-        $log = new Log();
-        $log->setFileSize($fileSize);
-        $log->setFilePath($pathInfo['dirname'] . '/' . $pathInfo['filename']);
-        $log->setFileType($pathInfo['extension']);
-        $log->setFileName($pathInfo['filename']);
-        $log->setMediaType($mimeType);
-        $log->setUser($user);
-        $log->setPage($token->getPage());
-
-        $fileObject = GeneralUtility::makeInstance(ResourceFactory::class)->retrieveFileOrFolderObject($token->getFile());
-
-        if ($fileObject) {
-            $log->setFileId((string)$fileObject->getUid());
+        // Page
+        if ($filter->getPageId() !== 0) {
+            $constraints[] = $query->equals('page', $filter->getPageId());
         }
 
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tx_securedownloads_domain_model_log');
-        $queryBuilder->insert('tx_securedownloads_domain_model_log')->values($log->toArray())->execute();
+        if (count($constraints) > 0) {
+            $query->matching($query->logicalAnd($constraints));
+        }
     }
 }

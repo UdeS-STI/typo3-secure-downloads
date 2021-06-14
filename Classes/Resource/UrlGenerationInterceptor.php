@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Bitmotion\SecureDownloads\Cache;
+namespace Bitmotion\SecureDownloads\Resource;
 
 /***
  *
@@ -13,9 +13,11 @@ namespace Bitmotion\SecureDownloads\Cache;
  *
  ***/
 
+use Bitmotion\SecureDownloads\Signal;
+
 /**
- * Stores decoded JSON web token data.
+ * @deprecated Will be removed in version 5.
  */
-class DecodeCache extends AbstractCache
+class UrlGenerationInterceptor extends Signal
 {
 }
