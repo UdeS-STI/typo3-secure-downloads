@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Leuchtfeuer\SecureDownloads\Middleware;
+namespace Bitmotion\SecureDownloads\Middleware;
 
 /***
  *
@@ -13,8 +13,8 @@ namespace Leuchtfeuer\SecureDownloads\Middleware;
  *
  ***/
 
-use Leuchtfeuer\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
-use Leuchtfeuer\SecureDownloads\Resource\FileDelivery;
+use Bitmotion\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
+use Bitmotion\SecureDownloads\Resource\FileDelivery;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -46,23 +46,18 @@ class FileDeliveryMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         if ($this->isResponsible($request)) {
-            $frontendUserAuthentication = $request->getAttribute('frontend.user');
+            // TODO: Remove the $GLOBALS array when dropping TYPO3 9 LTS support
+            $frontendUserAuthentication = $request->getAttribute('frontend.user') ?? $GLOBALS['TSFE']->fe_user;
             $frontendUserAuthentication->fetchGroupData();
 
             $cleanPath = mb_substr(urldecode($request->getUri()->getPath()), mb_strlen($this->assetPrefix));
             [$jwt, $basePath] = explode('/', $cleanPath);
-
-            return GeneralUtility::makeInstance(FileDelivery::class)->deliver($jwt, $request);
+            return (new FileDelivery($jwt))->deliver($request);
         }
 
         return $handler->handle($request);
     }
 
-    /**
-     * @param ServerRequestInterface $request The request interface
-     *
-     * @return bool Returns true when the Secure Downloads middleware is responsible for handling the actual request.
-     */
     public function isResponsible(ServerRequestInterface $request)
     {
         return mb_strpos(urldecode($request->getUri()->getPath()), $this->assetPrefix) === 0 && $request->getMethod() === 'GET';

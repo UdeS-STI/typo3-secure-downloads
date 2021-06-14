@@ -24,23 +24,19 @@
     }
   ],
   "require": {
-    "typo3/cms-backend": "^10.4.2",
-    "typo3/cms-core": "^10.4.2",
-    "typo3/cms-extbase": "^10.4.2",
-    "typo3/cms-frontend": "^10.4.2",
+    "typo3/cms-backend": "^9.5.17 || ^10.4.2",
+    "typo3/cms-core": "^9.5.17 || ^10.4.2",
+    "typo3/cms-extbase": "^9.5.17 || ^10.4.2",
+    "typo3/cms-frontend": "^9.5.17 || ^10.4.2",
     "firebase/php-jwt": "^5.0",
     "ext-pdo": "*"
   },
-  "require-dev": {
-    "helmich/typo3-typoscript-lint": "^2.1"
-  },
-
   "suggest": {
     "ext-fileinfo": "For getting mime types from file path."
   },
   "autoload": {
     "psr-4": {
-      "Leuchtfeuer\\SecureDownloads\\": "Classes"
+      "Bitmotion\\SecureDownloads\\": "Classes"
     }
   },
   "replace": {
@@ -48,11 +44,6 @@
     "typo3-ter/secure-downloads": "self.version"
   },
   "extra": {
-    "typo3/class-alias-loader": {
-      "class-alias-maps": [
-        "Migrations/Code/ClassAliasMap.php"
-      ]
-    },
     "typo3/cms": {
       "extension-key": "secure_downloads"
     }

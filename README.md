@@ -1,8 +1,8 @@
-[![Latest Stable Version](https://poser.pugx.org/leuchtfeuer/secure-downloads/v/stable)](https://packagist.org/packages/leuchtfeuer/secure-downloads)
-[![Total Downloads](https://poser.pugx.org/leuchtfeuer/secure-downloads/downloads)](https://packagist.org/packages/leuchtfeuer/secure-downloads)
-[![Latest Unstable Version](https://poser.pugx.org/leuchtfeuer/secure-downloads/v/unstable)](https://packagist.org/packages/leuchtfeuer/secure-downloads)
+[![Latest Stable Version](https://poser.pugx.org/bitmotion/secure-downloads/v/stable)](https://packagist.org/packages/bitmotion/secure-downloads)
+[![Total Downloads](https://poser.pugx.org/bitmotion/secure-downloads/downloads)](https://packagist.org/packages/bitmotion/secure-downloads)
+[![Latest Unstable Version](https://poser.pugx.org/bitmotion/secure-downloads/v/unstable)](https://packagist.org/packages/bitmotion/secure-downloads)
 [![Code Climate](https://codeclimate.com/github/Leuchtfeuer/typo3-secure-downloads/badges/gpa.svg)](https://codeclimate.com/github/Leuchtfeuer/typo3-secure-downloads)
-[![License](https://poser.pugx.org/leuchtfeuer/secure-downloads/license)](https://packagist.org/packages/leuchtfeuer/secure-downloads)
+[![License](https://poser.pugx.org/bitmotion/secure-downloads/license)](https://packagist.org/packages/bitmotion/secure-downloads)
 
 # TYPO3 Extension "Secure Downloads"
 
@@ -27,16 +27,18 @@ As a complementary measure, you will of course need to configure your web server
 .htaccess settings).
 
 ## Requirements
-We are currently supporting following TYPO3 versions:
+
+We are currently supporting following TYPO3 versions:<br><br>
 
 | Extension Version                                                              | TYPO3 v10 | TYPO3 v9 |
 | ------------------------------------------------------------------------------ | --------- | -------- |
-| [5.x](https://github.com/Leuchtfeuer/typo3-secure-downloads) <sup>1)</sup>     | x         | -        |
+| [5.x](https://github.com/Leuchtfeuer/typo3-secure-downloads) <sup>1</sup>      | x         | -        |
 | [4.x](https://github.com/Leuchtfeuer/typo3-secure-downloads/tree/release-4.x)  | x         | x        |
 
 * <sup>1)</sup> Upcoming release as `leuchtfeuer/secure-downloads` (vendor name changed).
 
 ### Outdated Versions
+
 For the following versions no more free bug fixes and new features will be provided by the authors:
 
 | Extension Version | TYPO3 v9 | TYPO3 v8 | TYPO3 v7 | TYPO3 v6.2 | TYPO3 v4.5 |
@@ -44,9 +46,9 @@ For the following versions no more free bug fixes and new features will be provi
 | 3.x               | x        | x        | -        | -          | -          |
 | 2.0.4 - 2.x       | -        | x        | x        | -          | -          |
 | 2.0.0 - 2.0.3     | -        | -        | x        | x          | -          |
-| 1.x<sup>2)</sup>  | -        | -        | -        | x          | x          |
+| 1.x<sup>2</sup>   | -        | -        | -        | x          | x          |
 
-* <sup>2)</sup> As [`EXT:naw_securedl`](https://extensions.typo3.org/extension/naw_securedl) or `typo3-ter/naw-securedl`.
+* <sup>2)</sup> As [`EXT:naw_securedl`](https://extensions.typo3.org/extension/naw_securedl) bzw. `typo3-ter/naw-securedl`.
 
 ## Installation
 There are several ways to require and install this extension. We recommend getting this extension via 
@@ -55,7 +57,7 @@ There are several ways to require and install this extension. We recommend getti
 ### Via Composer
 If your TYPO3 instance is running in composer mode, you can simply require the extension by running:
 
-    composer req leuchtfeuer/secure-downloads:>=5.0
+    composer req bitmotion/secure-downloads:^4.0
 
 ### Via Extension Manager
 Open the extension manager module of your TYPO3 instance and select "Get Extensions" in the select menu above the upload button. 
@@ -71,8 +73,8 @@ content directly into the `typo3conf/ext` directory of your TYPO3 instance. But 
 must be `secure_downloads` (the repository name will be default).
 
 ## Configuration
-After installation you need to configure this extension. Take a look at the corresponding section of the official 
-[manual](https://docs.typo3.org/p/leuchtfeuer/secure-downloads/master/en-us/AdministratorManual/ExtensionConfiguration/Index.html).
+After installation, you need to configure this extension. Take a look at the corresponding section of the official 
+[manual](https://docs.typo3.org/p/bitmotion/secure-downloads/4.1/en-us/AdministratorManual/ExtensionConfiguration/Index.html).
 
 ### Best Practice
 You can configure this extension to fit your specific needs. However, here are some "best practices" that may help you when first
@@ -84,29 +86,29 @@ using Secure Downloads:
 * Create a directory on your filesystem which matches the previously configured "Base Path"
 * Put an `.htaccess` file into that folder that denies the access to all files within and underneath this path
 * Configure the extension in the admin section of your TYPO3 Backend to match all files (use an astrix for the 
-  [securedFiletypes](https://docs.typo3.org/p/leuchtfeuer/secure-downloads/master/en-us/AdministratorManual/ExtensionConfiguration/Index.html#securedfiletypes)
+  [securedFiletypes](https://docs.typo3.org/p/bitmotion/secure-downloads/4.1/en-us/AdministratorManual/ExtensionConfiguration/Index.html#securedfiletypes)
   option) in your newly created file storage (use the path for the 
-  [securedDirs](https://docs.typo3.org/p/leuchtfeuer/secure-downloads/master/en-us/AdministratorManual/ExtensionConfiguration/Index.html#securedfiletypes)
+  [securedDirs](https://docs.typo3.org/p/bitmotion/secure-downloads/4.1/en-us/AdministratorManual/ExtensionConfiguration/Index.html#securedfiletypes)
   option).
 
 ### Access Configuration
 You also need to secure all the directories and file types by your server configuration. This can be done with `.htaccess` files.
 Some example .htaccess files can be found in the 
-[Resources/Private/Examples](https://github.com/Leuchtfeuer/typo3-secure-downloads/tree/master/Resources/Private/Examples) 
+[Resources/Private/Examples](https://github.com/Leuchtfeuer/typo3-secure-downloads/tree/release-4.x/Resources/Private/Examples) 
 folder.
 
-**Note**: This extension cannot secure links to files that you include in your CSS file. For example, you can secure `/fileadmin` 
+**Note**: This extension cannot secure links to files that you include in your CSS file. For example you can secure `/fileadmin` 
 with the default `.htaccess_deny` file by putting the file in `/fileadmin`. You can allow `/fileadmin/templates/` with the
 default `.htaccess_allow` file by putting this file to `/fileadmin/template/`.
 
 ## Documentation
 A detailed documentation can be found in the 
-[official TYPO3 documentation](https://docs.typo3.org/p/leuchtfeuer/secure-downloads/master/en-us/Index.html)
+[official TYPO3 documentation](https://docs.typo3.org/p/bitmotion/secure-downloads/master/en-us/Index.html)
 of this extension.
 
 ## Changelog
 The changelog can be found in the changelog chapter of the
-[official TYPO3 documentation](https://docs.typo3.org/p/leuchtfeuer/secure-downloads/master/en-us/About/ChangeLog/Index.html)
+[official TYPO3 documentation](https://docs.typo3.org/p/bitmotion/secure-downloads/master/en-us/Miscellaneous/ChangeLog/Index.html)
 of this extension.
 
 ## Contributing

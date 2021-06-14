@@ -26,7 +26,7 @@ If your TYPO3 instance is running in composer mode, you can simply require the e
 
 .. code-block:: bash
 
-   composer req leuchtfeuer/secure-downloads:>=5.0
+   composer req bitmotion/secure-downloads:^4.0
 
 .. _admin-installation-viaExtensionManager:
 
@@ -55,17 +55,18 @@ You can configure this extension to fit your specific needs. However, here are s
 using Secure Downloads:
 
 * Install this extension as described above
-* Enable the :ref:`create file storage <admin-extensionConfiguration-createFileStorage>` option
-* Put your files into that storage
+* Create a new `File Storage <https://docs.typo3.org/m/typo3/reference-coreapi/master/en-us/ApiOverview/Fal/Administration/Storages.html>`__
+  of type "Local filesystem" on page 0 of your TYPO3 instance and set the "Is publicly available?" option to false
+* Create a directory on your filesystem which matches the previously configured "Base Path"
+* Put an `.htaccess` file into that folder that denies the access to all files within and underneath this path
+* Configure the extension in the admin section of your TYPO3 Backend to match all files (use an astrix for the
+  :ref:`admin-extensionConfiguration-securedFiletypes` option) in your newly created file storage (use the path for the
+  :ref:`admin-extensionConfiguration-securedDirs` option)
 
-If you need to secure files outside of that directory, you still can adapt the :ref:`admin-extensionConfiguration-securedDirs` and
-:ref:`admin-extensionConfiguration-securedFileTypes` options.
+.. hint::
 
-.. figure:: ../Images/FileStorage.png
-   :alt: The "Secure Downloads" file storage in the file list module
-   :class: with-shadow
-
-   All files of the newly create "Secure Downloads" file storage are protected by default.
+   From version 5 on, it is possible to automatically generate a file storage in which all contained files are protected from
+   direct access.
 
 .. _admin-accessConfiguration:
 
@@ -87,14 +88,14 @@ Please make sure to adapt the file match pattern as configured in :ref:`admin-ex
 ::
    # Apache 2.4
    <IfModule mod_authz_core.c>
-     <FilesMatch "\.([pP][dD][fF]|[jJ][pP][eE]?[gG]|[gG][iI][fF]|[pP][nN][gG]|[oO][dD][tT]|[pP][pP][tT][xX]?|[dD][oO][cC][xX]?|[xX][lL][sS][xX]?|[zZ][iI][pP]|[rR][aA][rR]|[tT][gG][zZ]|[tT][aA][rR]|[gG][zZ])$">
+     <FilesMatch "\.(pdf|jpe?g|gif|png|odt|pptx?|docx?|xlsx?|zip|rar|tgz|tar|gz)$">
        Require all denied
      </FilesMatch>
    </IfModule>
 
    # Apache 2.2
    <IfModule !mod_authz_core.c>
-     <FilesMatch "\.([pP][dD][fF]|[jJ][pP][eE]?[gG]|[gG][iI][fF]|[pP][nN][gG]|[oO][dD][tT]|[pP][pP][tT][xX]?|[dD][oO][cC][xX]?|[xX][lL][sS][xX]?|[zZ][iI][pP]|[rR][aA][rR]|[tT][gG][zZ]|[tT][aA][rR]|[gG][zZ])$">
+     <FilesMatch "\.(pdf|jpe?g|gif|png|odt|pptx?|docx?|xlsx?|zip|rar|tgz|tar|gz)$">
        Order Allow,Deny
        Deny from all
      </FilesMatch>
@@ -104,14 +105,14 @@ Please make sure to adapt the file match pattern as configured in :ref:`admin-ex
 ::
    # Apache 2.4
    <IfModule mod_authz_core.c>
-     <FilesMatch "\.([pP][dD][fF]|[jJ][pP][eE]?[gG]|[gG][iI][fF]|[pP][nN][gG]|[oO][dD][tT]|[pP][pP][tT][xX]?|[dD][oO][cC][xX]?|[xX][lL][sS][xX]?|[zZ][iI][pP]|[rR][aA][rR]|[tT][gG][zZ]|[tT][aA][rR]|[gG][zZ])$">
+     <FilesMatch "\.(pdf|jpe?g|gif|png|odt|pptx?|docx?|xlsx?|zip|rar|tgz|tar|gz)$">
        Require all granted
      </FilesMatch>
    </IfModule>
 
    # Apache 2.2
    <IfModule !mod_authz_core.c>
-     <FilesMatch "\.([pP][dD][fF]|[jJ][pP][eE]?[gG]|[gG][iI][fF]|[pP][nN][gG]|[oO][dD][tT]|[pP][pP][tT][xX]?|[dD][oO][cC][xX]?|[xX][lL][sS][xX]?|[zZ][iI][pP]|[rR][aA][rR]|[tT][gG][zZ]|[tT][aA][rR]|[gG][zZ])$">
+     <FilesMatch "\.(pdf|jpe?g|gif|png|odt|pptx?|docx?|xlsx?|zip|rar|tgz|tar|gz)$">
        Order Deny,Allow
        Allow from all
      </FilesMatch>

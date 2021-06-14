@@ -19,7 +19,7 @@ Secure Downloads
    en
 
 :Copyright:
-   since 2006 by the athors
+   2006-2019
 
 :Author:
    Florian Wessels, Leuchtfeuer Digital Marketing
@@ -28,13 +28,8 @@ Secure Downloads
    dev@Leuchtfeuer.com
 
 :License:
-   This extension documentation is published under the
-   `CC BY-NC-SA 4.0 <https://creativecommons.org/licenses/by-nc-sa/4.0/>`__ (Creative Commons)
-   license.
-
-.. hint::
-
-   The documentation for version 4 and below can be found `here <https://docs.typo3.org/p/bitmotion/secure-downloads/4.1/en-us/Introduction/Index.html>`__.
+   This document is published under the Open Content License
+   available from http://www.opencontent.org/opl.shtml
 
 **TYPO3**
 
@@ -66,5 +61,4 @@ Secure Downloads
 
     Admin/Index
     Editor/Index
-    Developer/Index
     About/Index

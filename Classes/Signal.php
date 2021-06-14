@@ -1,6 +1,6 @@
 <?php
 declare(strict_types = 1);
-namespace Bitmotion\SecureDownloads\EventListener;
+namespace Bitmotion\SecureDownloads;
 
 /***
  *
@@ -13,58 +13,53 @@ namespace Bitmotion\SecureDownloads\EventListener;
  *
  ***/
 
+use Bitmotion\SecureDownloads\Domain\Transfer\ExtensionConfiguration;
 use Bitmotion\SecureDownloads\Service\SecureDownloadService;
 use TYPO3\CMS\Core\Core\Environment;
-use TYPO3\CMS\Core\Imaging\Event\ModifyIconForResourcePropertiesEvent;
+use TYPO3\CMS\Core\Resource\Driver\AbstractDriver;
 use TYPO3\CMS\Core\Resource\Driver\LocalDriver;
-use TYPO3\CMS\Core\Resource\Event\GeneratePublicUrlForResourceEvent;
 use TYPO3\CMS\Core\Resource\Exception;
 use TYPO3\CMS\Core\Resource\File;
 use TYPO3\CMS\Core\Resource\Folder;
 use TYPO3\CMS\Core\Resource\ProcessedFile;
+use TYPO3\CMS\Core\Resource\ResourceInterface;
+use TYPO3\CMS\Core\Resource\ResourceStorage;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3\CMS\Extbase\Service\EnvironmentService;
 
 /**
- * This event listener listens to PSR-14 events given in TYPO3 10 and above.
+ * @deprecated Will be removed in version 5. Use PSR-14 event instead.
+ *
+ * @see \Bitmotion\SecureDownloads\EventListener\SecureDownloadsEventListener
  */
-class SecureDownloadsEventListener implements SingletonInterface
+class Signal implements SingletonInterface
 {
-    /**
-     * @var SecureDownloadService
-     */
+    protected $extensionConfiguration;
+
     protected $sdlService;
 
-    /**
-     * @var EnvironmentService
-     */
     protected $environmentService;
 
     public function __construct()
     {
+        $this->extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class);
         $this->sdlService = GeneralUtility::makeInstance(SecureDownloadService::class);
         $this->environmentService = GeneralUtility::makeInstance(EnvironmentService::class);
     }
 
     /**
-     * This will secure a link when given file is underneath a protected directory and the file type matches the configured
-     * file types. It will blank the URL of files when we are in backend context so that no thumbnails will be shown.
-     *
-     * @param GeneratePublicUrlForResourceEvent $event The event.
+     * @deprecated Will be removed in version 5. Use PSR-14 event instead.
      */
-    public function onResourceStorageEmitPreGeneratePublicUrlSignal(GeneratePublicUrlForResourceEvent $event): void
+    public function getPublicUrl(ResourceStorage $storage, AbstractDriver $driver, ResourceInterface $resourceObject, bool $relativeToCurrentScript, array $urlData): void
     {
-        $driver = $event->getDriver();
-        $resource = $event->getResource();
-
-        if ($driver instanceof LocalDriver && ($resource instanceof File || $resource instanceof ProcessedFile)) {
+        if ($driver instanceof LocalDriver && ($resourceObject instanceof File || $resourceObject instanceof ProcessedFile)) {
             try {
-                $publicUrl = $driver->getPublicUrl($resource->getIdentifier());
+                $publicUrl = $driver->getPublicUrl($resourceObject->getIdentifier());
                 if ($this->sdlService->pathShouldBeSecured($publicUrl)) {
-                    $securedUrl = $this->getSecuredUrl($event->isRelativeToCurrentScript(), $publicUrl, $driver);
-                    $event->setPublicUrl($securedUrl);
+                    $securedUrl = $this->getSecuredUrl($relativeToCurrentScript, $publicUrl, $driver);
+                    $urlData['publicUrl'] = $securedUrl;
                 }
             } catch (Exception $exception) {
                 // Do nothing.
@@ -73,14 +68,10 @@ class SecureDownloadsEventListener implements SingletonInterface
     }
 
     /**
-     * Will add an overlay icon to secured directories and files when browsing the file list module.
-     *
-     * @param ModifyIconForResourcePropertiesEvent $event The event.
+     * @deprecated Will be removed in version 5. Use PSR-14 event instead.
      */
-    public function onIconFactoryEmitBuildIconForResourceSignal(ModifyIconForResourcePropertiesEvent $event): void
+    public function buildIconForResourceSignal(ResourceInterface $resource, string $size, array $options, string $iconIdentifier, ?string $overlayIdentifier): array
     {
-        $resource = $event->getResource();
-
         if ($resource instanceof Folder) {
             $publicUrl = $resource->getStorage()->getPublicUrl($resource) ?? $resource->getIdentifier();
             if ($this->sdlService->folderShouldBeSecured($publicUrl)) {
@@ -94,10 +85,13 @@ class SecureDownloadsEventListener implements SingletonInterface
             }
         }
 
-        $event->setOverlayIdentifier($overlayIdentifier ?? $event->getOverlayIdentifier());
+        return [$resource, $size, $options, $iconIdentifier, $overlayIdentifier];
     }
 
-    protected function getSecuredUrl(bool $relativeToCurrentScript, string $publicUrl, LocalDriver $driver): string
+    /**
+     * @deprecated Will be removed in version 5. Use PSR-14 event instead.
+     */
+    public function getSecuredUrl(bool $relativeToCurrentScript, string $publicUrl, LocalDriver $driver): string
     {
         $pathPart = '';
 
