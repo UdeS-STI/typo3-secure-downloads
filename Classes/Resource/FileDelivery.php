@@ -170,7 +170,7 @@ class FileDelivery
                 $this->exitScript($exception->getMessage());
             }
         }
-
+error_log( print_r( $data, true ));
         // Hook for doing stuff with JWT data
         // This is deprecated as there will be a dedicated class for handling JWTs.
         HookUtility::executeHook('output', 'encode', $data, $this);
@@ -283,7 +283,6 @@ class FileDelivery
         }
 
         $groupCheckDirs = $this->extensionConfiguration->getGroupCheckDirs();
-
         if (!empty($groupCheckDirs) && !preg_match('/' . HtmlParser::softQuoteExpression($groupCheckDirs) . '/', $this->file)) {
             return false;
         }
@@ -292,7 +291,8 @@ class FileDelivery
         sort($actualGroups);
         $transmittedGroups = GeneralUtility::intExplode(',', $this->userGroups);
         sort($transmittedGroups);
-
+error_log( print_r( $transmittedGroups, true ));
+error_log( print_r( $actualGroups, true ) );
         if ($actualGroups === $transmittedGroups) {
             // Actual groups and transmitted groups are identically, so we can ignore the excluded groups
             return true;

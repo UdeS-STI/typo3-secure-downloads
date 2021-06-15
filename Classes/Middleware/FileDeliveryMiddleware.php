@@ -41,10 +41,28 @@ class FileDeliveryMiddleware implements MiddlewareInterface
           $extensionConfiguration->getTokenPrefix()
         );
         if ($this->isResponsible($request)) {
+
             // TODO: Remove the $GLOBALS array when dropping TYPO3 9 LTS support
             $frontendUserAuthentication = $request->getAttribute('frontend.user') ?? $GLOBALS['TSFE']->fe_user;
             $frontendUserAuthentication->fetchGroupData();
 
+            ######################################################################################################################
+            # Tel que constaté dans le fichier /public/typo3/sysext/frontend/Classes/Authentication/FrontendUserAuthentication.php
+            # à la ligne 309, la fonction fetchGroupData() retourne seulement le nombre de fe_groups associé à l'utilisateur.
+            # Secure_downloads ne semble pas faire grand chose avec le retour de fonction... La propriété publique $groupData
+            # contient les informations des groupes.
+            #
+            # l'extensions secure_downloads offre une option enableGroupCheck qui est utilisé dans la classe FileDelivery.php
+            # mais qui est dans une section du code qui est destiné à être éliminé pour la version 5.x de cet extension.
+            # Il semble que la validation du groupe ne se fait pas en utilisant le token JWT.
+            #
+            # Dans la fonction FileDelivery()->getDataFromJsonWebToken($jwt) appelé dans le constructeur de cette dernière,
+            # Des données sont décodés à partir du JWT et une série de groupes sont retournés dont entre autre le id:1 qui est __tout-udes
+            # Il faudrait comprendre comment cette liste de groupe associé au fichier est généré car ça mismatch avec les groupes assigné
+            # sur la page.
+
+
+            # $frontendUserAuthentication->groupData
             $cleanPath = mb_substr(urldecode($request->getUri()->getPath()), mb_strlen($this->assetPrefix));
             [$jwt, $basePath] = explode('/', $cleanPath);
             return (new FileDelivery($jwt))->deliver($request);
